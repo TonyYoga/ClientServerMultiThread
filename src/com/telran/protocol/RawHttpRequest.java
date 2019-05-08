@@ -4,14 +4,14 @@ import java.net.URI;
 import java.util.Map;
 
 public class RawHttpRequest {
-    enum Method {
+    public enum Method {
         GET, POST, PUT, DELETE
     }
 
-    Method method;
-    URI uri;
-    Map<String, String> headers;
-    String body;
+    public Method method;
+    public URI uri;
+    public Map<String, String> headers;
+    public String body;
 
     public RawHttpRequest(Method method, URI uri, Map<String, String> headers, String body) {
         this.method = method;
