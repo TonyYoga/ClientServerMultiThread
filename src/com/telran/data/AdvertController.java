@@ -64,7 +64,7 @@ public class AdvertController implements Protocol {
             if (res != null) {
                 response = createResponse(RawHttpResponse.ResponseCode.OK, "OK", "Advert deleted" + res.getId());
             } else {
-                response = getErrorResponse(RawHttpResponse.ResponseCode.BAD_REQUEST, "Not Found", "Advert not found "); //TODO notmal answer
+                response = getErrorResponse(RawHttpResponse.ResponseCode.BAD_REQUEST, "Not Found", "Advert not found ");
             }
         }
         return response;
@@ -79,9 +79,8 @@ public class AdvertController implements Protocol {
                 String[] keyValue = param.split("=");
 
                 if (keyValue[0].equals("owner")) {
-                    int id = Integer.parseInt(keyValue[1]);
                     Iterable<Advert> adverts = advertRepository.find(keyValue[1]);
-                    response = createResponse(RawHttpResponse.ResponseCode.OK, "OK", Utils.createBodyFromList(adverts)); //TODO
+                    response = createResponse(RawHttpResponse.ResponseCode.OK, "OK", Utils.createBodyFromList(adverts));
                 } else if (keyValue[0].equals("date")) {
                     LocalDate localDate = LocalDate.parse(keyValue[1]);
                     Iterable<Advert> adverts = advertRepository.find(localDate);
