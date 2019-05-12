@@ -47,11 +47,6 @@ public class Advert {
 
     @Override
     public String toString() {
-        return "Advert{" +
-                "id=" + id +
-                ", owner='" + owner + '\'' +
-                ", content='" + content + '\'' +
-                ", dateTime=" + dateTime +
-                '}';
+        return  "id=" + id + "&owner=" + owner + "&content='" + content + "&dateTime=" + dateTime;
     }
 }
