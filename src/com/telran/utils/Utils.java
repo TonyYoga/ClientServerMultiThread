@@ -6,13 +6,15 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class Utils {
 
-    public <T> T parseTextData(String data, Class<T> clazz) {
+    public static <T> T parseTextData(String data, Class<T> clazz) {
         T result = null;
         try {
             Constructor<T> constructor = clazz.getConstructor();
@@ -51,12 +53,28 @@ public class Utils {
         return mapper;
     }
 
-    private static Map<String, String> parseParams(String query) {
+    public static Map<String, String> parseParams(String query) {
         if (query == null) {
             return null;
         }
         return Arrays.stream(query.split("&"))
                 .map(pair -> pair.split("="))
                 .collect(Collectors.toMap(arr -> arr[0], arr -> arr[1]));
+    }
+
+    public static <T> String createBodyFromList(Iterable<T> values) {
+        if (values == null) {
+            return null;
+        }
+        List<T> list = StreamSupport.stream(values.spliterator(), false)
+                .collect(Collectors.toList());
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < list.size(); i++) {
+            builder.append(list.get(i).toString());
+            if (i < list.size() - 1) {
+                builder.append(";\r\n");
+            }
+        }
+        return builder.toString();
     }
 }
