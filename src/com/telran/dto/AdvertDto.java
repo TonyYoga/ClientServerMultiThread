@@ -39,7 +39,7 @@ public class AdvertDto {
         this.owner = owner;
     }
 
-    public LocalDateTime getDateTime() {
+    public LocalDateTime getDate() {
         return dateTime;
     }
 
