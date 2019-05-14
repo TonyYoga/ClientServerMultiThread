@@ -18,14 +18,18 @@ public class TcpServer {
         this.port = port;
         this.protocol = protocol;
         serverSocket = new ServerSocket(port);
-        executorService = Executors.newFixedThreadPool(5);
+        executorService = Executors.newCachedThreadPool();
     }
 
     public void run() {
+        System.out.println("Server listening port: " + port);
         try {
             while (true) {
+                System.out.println("Waiting for clients ...");
                 Socket socket = serverSocket.accept();
-                executorService.execute(new HttpSessionHandler(protocol, socket));
+                socket.setSoTimeout(15000);
+                System.out.println("Client: " + socket.getRemoteSocketAddress());
+                executorService.execute(new HttpSessionHandler(socket, protocol));
             }
         } catch (IOException e) {
             e.printStackTrace();

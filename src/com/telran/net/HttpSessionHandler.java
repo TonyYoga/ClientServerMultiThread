@@ -8,91 +8,94 @@ import java.io.*;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-public class HttpSessionHandler  implements Runnable {
+public class HttpSessionHandler implements Runnable{
     Protocol protocol;
     Socket socket;
 
-    public HttpSessionHandler(Protocol protocol, Socket socket) {
+    public HttpSessionHandler(Socket socket, Protocol protocol) {
         this.protocol = protocol;
         this.socket = socket;
     }
 
-    @Override
     public void run() {
         try (Socket socket = this.socket;
-             BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-             BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+             BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+             BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {
             RawHttpResponse response;
             try {
-                RawHttpRequest request = readRequest(br);
-                System.out.println("----------");
-                System.out.println("Request: \n" + request);
+
+                RawHttpRequest request = readHeader(br);
+                int bodyLength = 0;
+                if(request.method != RawHttpRequest.Method.GET) {
+                    try {
+                        bodyLength = Integer.parseInt(request.headers.get("Content-Length"));
+                    } catch (NumberFormatException ex) {
+                        throw new RuntimeException("Content-Length is empty");
+                    }
+                }
+
+                String body = readBody(br,bodyLength);
+                request.body = body;
+                System.out.println("----------------");
+                System.out.println("Request\n" + request);
+
                 response = protocol.getResponse(request);
-            } catch (Exception ex) {
-                response = protocol.getErrorResponse(RawHttpResponse.ResponseCode.BAD_REQUEST, "Bad Request", ex.getMessage());
+
+            }catch (Exception ex){
+                response = protocol.getErrorResponse(RawHttpResponse.ResponseCode.BAD_REQUEST,"Bad Request", ex.getMessage());
             }
-            System.out.println("----------");
-            System.out.println("Response: \n");
+
+            System.out.println("-----------------");
             System.out.println("Response");
+            System.out.println(response);
             bw.write(response.toString());
             bw.flush();
-        } catch (SocketException ex) {
-
-            System.out.println("Client closed connection");
-        } catch (IOException ex) {
-            System.out.println("Error: " + ex.getMessage());
+        } catch (SocketException e) {
+            System.out.println("Client closed connection!");
+        } catch (IOException e) {
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
-    private RawHttpRequest readRequest(BufferedReader br) throws IOException {
+    private RawHttpRequest readHeader(BufferedReader br) {
         try {
-            //Starting lines
             String startingLine = br.readLine();
-            String[] startLineArgs = startingLine.split(" ");
-            RawHttpRequest.Method method = RawHttpRequest.Method.valueOf(startLineArgs[0]);
-            URI path = URI.create(startLineArgs[1]);
+            String[] startingLineArgs = startingLine.split(" ");
+            RawHttpRequest.Method method = RawHttpRequest.Method.valueOf(startingLineArgs[0]);
+            URI uri = URI.create(startingLineArgs[1]);
 
-            //Headers
             Map<String, String> headers = new HashMap<>();
             String header = br.readLine();
             while (header.length() > 0) {
-                String[] arr = header.split(":");
-                headers.put(arr[0].trim(), arr[1].trim());
+                String[] args = header.split(":");
+                headers.put(args[0].trim(), args[1].trim());
                 header = br.readLine();
             }
-
-            //Body
-            StringBuilder bodyBuilder = new StringBuilder();
-            try {
-                int totalLenght = 1;
-                if (headers.containsKey("Content-Length")) {
-                    totalLenght = Integer.parseInt(headers.get("Content-Length"));
-                }
-                if (method != RawHttpRequest.Method.GET && totalLenght > 0) {
-                    String bodyLine = br.readLine();
-                    bodyBuilder.append(bodyLine);
-                    int readCount = bodyLine.length();
-//                System.out.println(readCount);
-                    while (readCount < totalLenght) {
-                        bodyLine = br.readLine();
-                        if (bodyLine == null) {
-                            break;
-                        }
-                        readCount += bodyLine.length();
-                    }
-                }
-            } catch (IOException ex) {
-                System.out.println("Client closed input");
-            }
-
-            return new RawHttpRequest(method, path, headers, bodyBuilder.toString());
-        } catch (IOException ex) {
-            ex.printStackTrace();
-            throw new HttpFormatException(ex.getMessage());
+            return new RawHttpRequest(method, uri, headers, null);
+        } catch (Exception ex) {
+            throw new HttpFormatException("Wrong http format: " + ex.getMessage());
         }
     }
 
+    private String readBody(BufferedReader br, int length) throws IOException {
+        if(length <= 0){
+            return null;
+        }
+
+        char[] buff = new char[length];
+        int offset = 0;
+
+        while (offset < length) {
+            int count = br.read(buff, offset, length - offset);
+            if (count == -1) {
+                break;
+            }
+            offset += count;
+        }
+        return new String(buff);
+    }
 }
