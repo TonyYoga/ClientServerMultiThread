@@ -58,9 +58,6 @@ public class Utils {
     }
 
     public static Map<String, String> parseParams(String query) {
-        if (query == null) {
-            return null;
-        }
         return Arrays.stream(query.split("&"))
                 .map(pair -> pair.split("="))
                 .collect(Collectors.toMap(arr -> arr[0], arr -> arr[1]));
