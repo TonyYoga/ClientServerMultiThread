@@ -5,8 +5,12 @@ import com.telran.protocol.Protocol;
 import com.telran.protocol.RawHttpRequest;
 import com.telran.protocol.RawHttpResponse;
 import com.telran.utils.Utils;
+import dto.AddAdvertResponseDto;
+import dto.AdvertDto;
+import dto.ErrorResponseDto;
 
 import java.net.URI;
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -33,20 +37,25 @@ public class AdvertController implements Protocol {
     private RawHttpResponse advert(RawHttpRequest request) {
         RawHttpResponse response = null;
         Advert advert;
+        //TODO class Solution
         switch (request.method) {
             case GET:
-                response = getAdvertResponse(request);
+                //TODO class Solution
+//                response = getAdvertResponse(request);
                 break;
             case POST:
-                advert = Utils.parseTextData(request.body, Advert.class);
-                if (advertRepository.addAdvert(advert) != null) {
-                    response = createResponse(RawHttpResponse.ResponseCode.OK, "OK", "Advert added");
+                AdvertDto dto = Utils.parseTextData(request.body, AdvertDto.class);
+                UUID id = UUID.randomUUID();
+                if (advertRepository.addAdvert(new Advert(id, dto.getOwner(), dto.getContent(), dto.getDateTime())) != null) {
+                    AddAdvertResponseDto responseDto = new AddAdvertResponseDto(id);
+                    response = createResponse(RawHttpResponse.ResponseCode.OK, "Ok", responseDto.toString());
                 } else {
-                    response = getErrorResponse(RawHttpResponse.ResponseCode.SERVER_ERROR, "Conflict", "Advert not added");
+                    response = getErrorResponse(RawHttpResponse.ResponseCode.SERVER_ERROR, "Server Error", " Error adding advert< try again later!");
                 }
                 break;
             case DELETE:
-                response = removeAdvert(request);
+                //TODO class Solution
+//                response = removeAdvert(request);
                 break;
                 
             default:
@@ -56,48 +65,48 @@ public class AdvertController implements Protocol {
         return response;
     }
 
-    private RawHttpResponse removeAdvert(RawHttpRequest request) {
-        RawHttpResponse response = null;
-        Map<String, String> params = Utils.parseParams(request.uri.getQuery());
-        if (params != null && params.containsKey("id")) {
-            Advert res = advertRepository.remove(UUID.fromString(params.get("id")));
-            if (res != null) {
-                response = createResponse(RawHttpResponse.ResponseCode.OK, "OK", "Advert deleted" + res.getId());
-            } else {
-                response = getErrorResponse(RawHttpResponse.ResponseCode.BAD_REQUEST, "Not Found", "Advert not found ");
-            }
-        }
-        return response;
-    }
-
-    private RawHttpResponse getAdvertResponse(RawHttpRequest request) {
-        RawHttpResponse response = null;
-        String params = request.uri.getQuery();
-        if (params != null) {
-            String[] arr = params.split("&");
-            for (String param : arr) {
-                String[] keyValue = param.split("=");
-
-                if (keyValue[0].equals("owner")) {
-                    Iterable<Advert> adverts = advertRepository.find(keyValue[1]);
-                    response = createResponse(RawHttpResponse.ResponseCode.OK, "OK", Utils.createBodyFromList(adverts));
-                } else if (keyValue[0].equals("date")) {
-                    LocalDate localDate = LocalDate.parse(keyValue[1]);
-                    Iterable<Advert> adverts = advertRepository.find(localDate);
-                    response = createResponse(RawHttpResponse.ResponseCode.OK, "OK", Utils.createBodyFromList(adverts));
-                } else if (keyValue[0].equals("start") && keyValue[2].equals("end")) {
-                    LocalDate start = LocalDate.parse(keyValue[1]);
-                    LocalDate end = LocalDate.parse(keyValue[3]);
-                    Iterable<Advert> adverts = advertRepository.find(start, end);
-                    response = createResponse(RawHttpResponse.ResponseCode.OK, "OK", Utils.createBodyFromList(adverts));
-                }
-            }
-        } else {
-            response = getErrorResponse(RawHttpResponse.ResponseCode.BAD_REQUEST,"Bad request", "Wrong query params!");
-        }
-
-        return response;
-    }
+//    private RawHttpResponse removeAdvert(RawHttpRequest request) {
+//        RawHttpResponse response = null;
+//        Map<String, String> params = Utils.parseParams(request.uri.getQuery());
+//        if (params != null && params.containsKey("id")) {
+//            Advert res = advertRepository.remove(UUID.fromString(params.get("id")));
+//            if (res != null) {
+//                response = createResponse(RawHttpResponse.ResponseCode.OK, "OK", "Advert deleted" + res.getId());
+//            } else {
+//                response = getErrorResponse(RawHttpResponse.ResponseCode.BAD_REQUEST, "Not Found", "Advert not found ");
+//            }
+//        }
+//        return response;
+//    }
+//
+//    private RawHttpResponse getAdvertResponse(RawHttpRequest request) {
+//        RawHttpResponse response = null;
+//        String params = request.uri.getQuery();
+//        if (params != null) {
+//            String[] arr = params.split("&");
+//            for (String param : arr) {
+//                String[] keyValue = param.split("=");
+//
+//                if (keyValue[0].equals("owner")) {
+//                    Iterable<Advert> adverts = advertRepository.find(keyValue[1]);
+//                    response = createResponse(RawHttpResponse.ResponseCode.OK, "OK", Utils.createBodyFromList(adverts));
+//                } else if (keyValue[0].equals("date")) {
+//                    LocalDate localDate = LocalDate.parse(keyValue[1]);
+//                    Iterable<Advert> adverts = advertRepository.find(localDate);
+//                    response = createResponse(RawHttpResponse.ResponseCode.OK, "OK", Utils.createBodyFromList(adverts));
+//                } else if (keyValue[0].equals("start") && keyValue[2].equals("end")) {
+//                    LocalDate start = LocalDate.parse(keyValue[1]);
+//                    LocalDate end = LocalDate.parse(keyValue[3]);
+//                    Iterable<Advert> adverts = advertRepository.find(start, end);
+//                    response = createResponse(RawHttpResponse.ResponseCode.OK, "OK", Utils.createBodyFromList(adverts));
+//                }
+//            }
+//        } else {
+//            response = getErrorResponse(RawHttpResponse.ResponseCode.BAD_REQUEST,"Bad request", "Wrong query params!");
+//        }
+//
+//        return response;
+//    }
 
     private RawHttpResponse createResponse(int code, String reasonPhrase, String body) {
         Map<String, String> headers = new HashMap<>();
@@ -119,9 +128,14 @@ public class AdvertController implements Protocol {
             Function<RawHttpRequest, RawHttpResponse> mapperFunc = mapper.get(path);
             if (mapperFunc == null) {
                 throw new RuntimeException("Wrong path: " + path);
-
             }
-            return mapperFunc.apply(request);
+            RawHttpResponse response; //TODO
+            try {
+                return mapperFunc.apply(request);
+            } catch (DateTimeException ex) {
+                //TODO get from class Solution
+            }
+
         } catch (Exception ex) {
             return getErrorResponse(RawHttpResponse.ResponseCode.BAD_REQUEST, "Not Found", ex.getMessage());
         }
@@ -129,11 +143,12 @@ public class AdvertController implements Protocol {
 
     @Override
     public RawHttpResponse getErrorResponse(int code, String reasonPhrase, String errorBody) {
+        String body = new ErrorResponseDto(errorBody).toString();
         Map<String, String> headers = new HashMap<>();
         headers.put(HEADER_DATE, LocalDateTime.now().toString());
         headers.put(HEADER_TYPE, CONTENT_TYPE_TEXT);
         headers.put(HEADER_SERVER, "Advert Repository Server");
-        headers.put(HEADER_LENGTH, String.valueOf(errorBody.length()));
-        return new RawHttpResponse(code, reasonPhrase, headers, errorBody);
+        headers.put(HEADER_LENGTH, String.valueOf(body.length()));
+        return new RawHttpResponse(code, reasonPhrase, headers, body);
     }
 }

@@ -2,8 +2,10 @@ package com.telran.utils;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.text.DateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -26,7 +28,7 @@ public class Utils {
                     field.setAccessible(true);
                     Function<String, ?> mapper = getTypeParser().get(field.getType().getSimpleName());
                     if (mapper == null) {
-                        throw new RuntimeException();
+                        throw new RuntimeException("Unsupported type: " + field.getName());
                     }
                     field.set(result, mapper.apply(param.getValue()));
                 } catch (NoSuchFieldException |
@@ -48,8 +50,10 @@ public class Utils {
         mapper.put(Integer.class.getSimpleName(), Integer::parseInt);
         mapper.put(int.class.getSimpleName(), Integer::parseInt);
         mapper.put(String.class.getSimpleName(), v -> v);
-        mapper.put(LocalDateTime.class.getSimpleName(), LocalDateTime::parse);
-        mapper.put(LocalDate.class.getSimpleName(), LocalDate::parse);
+        mapper.put(LocalDateTime.class.getSimpleName(),
+                v -> LocalDateTime.parse(v, DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+        mapper.put(LocalDate.class.getSimpleName(),
+                v -> DateTimeFormatter.ofPattern("dd/MM/yyyy"));
         return mapper;
     }
 
