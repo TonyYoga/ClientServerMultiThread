@@ -7,33 +7,31 @@ import java.util.UUID;
 public class Advert {
     private UUID id;
     private String owner;
-    private String content;
     private LocalDateTime dateTime;
+    private String content;
 
 
-    public Advert(UUID id, String owner, String content, LocalDateTime dateTime) {
+
+    public Advert(UUID id, String owner, LocalDateTime dateTime, String content) {
         this.id = id;
         this.owner = owner;
         this.content = content;
         this.dateTime = dateTime;
-
-
-
     }
 
-    public UUID getId() {
+    public UUID id() {
         return id;
     }
 
-    public String getOwner() {
+    public String owner() {
         return owner;
     }
 
-    public String getContent() {
+    public String content() {
         return content;
     }
 
-    public LocalDateTime getDateTime() {
+    public LocalDateTime date() {
         return dateTime;
     }
 

@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 public interface AdvertRepository {
-    UUID addAdvert(Advert advert);
+    boolean addAdvert(Advert advert);
 
     Advert remove(UUID uuid);
 
