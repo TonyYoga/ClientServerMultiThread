@@ -1,4 +1,4 @@
-package dto;
+package com.telran.dto;
 
 import com.telran.data.entity.Advert;
 
