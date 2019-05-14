@@ -1,22 +1,27 @@
 package com.telran.data;
 
 import com.telran.data.entity.Advert;
+import com.telran.dto.AddAdvertResponseDto;
+import com.telran.dto.AdvertDto;
+import com.telran.dto.AdvertListDto;
+import com.telran.dto.ErrorResponseDto;
 import com.telran.protocol.Protocol;
 import com.telran.protocol.RawHttpRequest;
 import com.telran.protocol.RawHttpResponse;
 import com.telran.utils.Utils;
-import dto.AddAdvertResponseDto;
-import dto.AdvertDto;
-import dto.ErrorResponseDto;
 
 import java.net.URI;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class AdvertController implements Protocol {
     private static final String HEADER_LENGTH = "Content-Length";
@@ -36,12 +41,28 @@ public class AdvertController implements Protocol {
 
     private RawHttpResponse advert(RawHttpRequest request) {
         RawHttpResponse response = null;
-        Advert advert;
-        //TODO class Solution
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        Map<String, String> queries;
+//        Advert advert;
         switch (request.method) {
             case GET:
-                //TODO class Solution
-//                response = getAdvertResponse(request);
+                Objects.requireNonNull(request.uri.getQuery(), "Wrong request format");
+                queries = Utils.parseParams(request.uri.getQuery());
+                if (queries.containsKey("owner")) {
+                    Iterable<Advert> list = advertRepository.find(queries.get("owner"));
+                    Objects.requireNonNull(list, "Owner does not exist");
+                } else if (queries.containsKey("date")) {
+                    LocalDate date = LocalDate.parse(queries.get("date"), formatter);
+                    Iterable<Advert> list = advertRepository.find(date);
+                    response = mapListToResponse(list);
+                } else if (queries.containsKey("start") && queries.containsKey("end")) {
+                    LocalDate start = LocalDate.parse(queries.get("start"), formatter);
+                    LocalDate end = LocalDate.parse(queries.get("end"), formatter);
+                    Iterable<Advert> list = advertRepository.find(start, end);
+                    response = mapListToResponse(list);
+                } else {
+                    throw new RuntimeException("Wrong request format");
+                }
                 break;
             case POST:
                 AdvertDto dto = Utils.parseTextData(request.body, AdvertDto.class);
@@ -54,8 +75,14 @@ public class AdvertController implements Protocol {
                 }
                 break;
             case DELETE:
-                //TODO class Solution
-//                response = removeAdvert(request);
+                Objects.requireNonNull(request.uri.getQuery(), "Wrong request format!");
+                queries = Utils.parseParams(request.uri.getQuery());
+                String queryId = queries.get("id");
+                Objects.requireNonNull(queryId, "Wrong id format");
+                Advert advert = advertRepository.remove(UUID.fromString(queryId));
+                Objects.requireNonNull(advert, "Advert with " + queryId + " does not exist!");
+                AdvertDto advertDto = new AdvertDto(advert.getId(), advert.getOwner(), advert.getDateTime(), advert.getContent());
+                response = createResponse(RawHttpResponse.ResponseCode.OK, "OK", advertDto.toString());
                 break;
                 
             default:
@@ -63,50 +90,54 @@ public class AdvertController implements Protocol {
         }
         
         return response;
-    }
 
-//    private RawHttpResponse removeAdvert(RawHttpRequest request) {
-//        RawHttpResponse response = null;
-//        Map<String, String> params = Utils.parseParams(request.uri.getQuery());
-//        if (params != null && params.containsKey("id")) {
-//            Advert res = advertRepository.remove(UUID.fromString(params.get("id")));
-//            if (res != null) {
-//                response = createResponse(RawHttpResponse.ResponseCode.OK, "OK", "Advert deleted" + res.getId());
-//            } else {
-//                response = getErrorResponse(RawHttpResponse.ResponseCode.BAD_REQUEST, "Not Found", "Advert not found ");
-//            }
-//        }
-//        return response;
-//    }
-//
-//    private RawHttpResponse getAdvertResponse(RawHttpRequest request) {
-//        RawHttpResponse response = null;
-//        String params = request.uri.getQuery();
-//        if (params != null) {
-//            String[] arr = params.split("&");
-//            for (String param : arr) {
-//                String[] keyValue = param.split("=");
-//
-//                if (keyValue[0].equals("owner")) {
-//                    Iterable<Advert> adverts = advertRepository.find(keyValue[1]);
-//                    response = createResponse(RawHttpResponse.ResponseCode.OK, "OK", Utils.createBodyFromList(adverts));
-//                } else if (keyValue[0].equals("date")) {
-//                    LocalDate localDate = LocalDate.parse(keyValue[1]);
-//                    Iterable<Advert> adverts = advertRepository.find(localDate);
-//                    response = createResponse(RawHttpResponse.ResponseCode.OK, "OK", Utils.createBodyFromList(adverts));
-//                } else if (keyValue[0].equals("start") && keyValue[2].equals("end")) {
-//                    LocalDate start = LocalDate.parse(keyValue[1]);
-//                    LocalDate end = LocalDate.parse(keyValue[3]);
-//                    Iterable<Advert> adverts = advertRepository.find(start, end);
-//                    response = createResponse(RawHttpResponse.ResponseCode.OK, "OK", Utils.createBodyFromList(adverts));
+        /*
+        CASE realisation JAVA12
+         */
+//        return switch(request.method){
+//            case GET -> {
+//                Objects.requireNonNull(request.uri.getQuery(),"Wrong request format");
+//                queries = Utils.parseQuery(request.uri.getQuery());
+//                if(queries.containsKey("owner")){
+//                    Iterable<Advert> list = repository.find(queries.get("owner"));
+//                    Objects.requireNonNull(list,"Owner does not exist");
+//                    break mapListToResponse(list);
+//                }else if(queries.containsKey("date")){
+//                    LocalDate date = LocalDate.parse(queries.get("date"),formatter);
+//                    Iterable<Advert> list = repository.find(date);
+//                    break mapListToResponse(list);
+//                }else if(queries.containsKey("start") && queries.containsKey("end")){
+//                    LocalDate start = LocalDate.parse(queries.get("start"),formatter);
+//                    LocalDate end = LocalDate.parse(queries.get("end"),formatter);
+//                    Iterable<Advert> list = repository.find(start,end);
+//                    break mapListToResponse(list);
+//                }else{
+//                    throw new RuntimeException("Wrong request format");
 //                }
 //            }
-//        } else {
-//            response = getErrorResponse(RawHttpResponse.ResponseCode.BAD_REQUEST,"Bad request", "Wrong query params!");
-//        }
-//
-//        return response;
-//    }
+//            case POST -> {
+//                AdvertDto dto = Utils.parseTextData(request.body, AdvertDto.class);
+//                UUID id = UUID.randomUUID();
+//                if (repository.add(new Advert(id, dto.getOwner(), dto.getDate(), dto.getContent()))) {
+//                    AddAdvertResponseDto responseDto = new AddAdvertResponseDto(id);
+//                    break createResponse(RawHttpResponse.ResponseCode.OK, "OK", responseDto.toString());
+//                } else {
+//                    break getErrorResponse(RawHttpResponse.ResponseCode.SERVER_ERROR, "Server Error", "Error adding advert! Try again");
+//                }
+//            }
+//            case DELETE -> {
+//                Objects.requireNonNull(request.uri.getQuery(),"Wrong request format");
+//                queries = Utils.parseQuery(request.uri.getQuery());
+//                String queryId = queries.get("id");
+//                Objects.requireNonNull(queryId,"Wrong id format");
+//                Advert advert = repository.remove(UUID.fromString(queryId));
+//                Objects.requireNonNull(advert,"Advert with " + queryId + " does not exist!");
+//                AdvertDto advertDto = new AdvertDto(advert.id(), advert.owner(), advert.date(), advert.content());
+//                break createResponse(RawHttpResponse.ResponseCode.OK, "OK", advertDto.toString());
+//            }
+//            default -> getErrorResponse(RawHttpResponse.ResponseCode.BAD_REQUEST, "Bad request", "Unsupported request method: " + request.method);
+//        };
+    }
 
     private RawHttpResponse createResponse(int code, String reasonPhrase, String body) {
         Map<String, String> headers = new HashMap<>();
@@ -129,12 +160,20 @@ public class AdvertController implements Protocol {
             if (mapperFunc == null) {
                 throw new RuntimeException("Wrong path: " + path);
             }
-            RawHttpResponse response; //TODO
+            RawHttpResponse response;
             try {
                 return mapperFunc.apply(request);
             } catch (DateTimeException ex) {
-                //TODO get from class Solution
+                ex.printStackTrace();
+                response = getErrorResponse(RawHttpResponse.ResponseCode.BAD_REQUEST, "Bade request", "Wrong date format! Date should be dd/MM/yyy, Example 31/12/2019");
+            } catch (IllegalArgumentException ex) {
+                ex.printStackTrace();
+                response = getErrorResponse(RawHttpResponse.ResponseCode.BAD_REQUEST, "Bad request", "Wrong id format");
+            } catch (RuntimeException ex) {
+                ex.printStackTrace();
+                response = getErrorResponse(RawHttpResponse.ResponseCode.BAD_REQUEST,"Bad request",ex.getMessage());
             }
+            return response;
 
         } catch (Exception ex) {
             return getErrorResponse(RawHttpResponse.ResponseCode.BAD_REQUEST, "Not Found", ex.getMessage());
@@ -150,5 +189,15 @@ public class AdvertController implements Protocol {
         headers.put(HEADER_SERVER, "Advert Repository Server");
         headers.put(HEADER_LENGTH, String.valueOf(body.length()));
         return new RawHttpResponse(code, reasonPhrase, headers, body);
+    }
+
+    private RawHttpResponse mapListToResponse(Iterable<Advert> list) {
+        if (list != null) {
+            AdvertListDto dto = new AdvertListDto(StreamSupport.stream(list.spliterator(), false)
+                    .map(a -> new AdvertDto(a.getId(), a.getOwner(), a.getDateTime(), a.getContent()))
+                    .collect(Collectors.toList()));
+            return createResponse(RawHttpResponse.ResponseCode.OK, "OK", dto.toString());
+        }
+        return createResponse(RawHttpResponse.ResponseCode.OK, "OK", "");
     }
 }
